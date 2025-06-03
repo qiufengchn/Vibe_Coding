@@ -1,0 +1,2 @@
+- Contains GitHub Actions workflows for automation (e.g., continuous integration, deployment, testing).
+- Example: A workflow to run tests on every push.
