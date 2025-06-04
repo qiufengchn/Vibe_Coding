@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Q NoteX - 轻量级笔记软件演示</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+            background-color: #ffffff;
+        }
+
+        .sidebar {
+            width: 320px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            background-color: #ffffff;
+        }
+
+        .sidebar-header h1 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .btn-new {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 15px;
+        }
+
+        .btn-new:hover {
+            background-color: #0056b3;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .notes-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .note-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .note-item:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+        }
+
+        .note-item.active {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+        }
+
+        .note-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .note-preview {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .note-date {
+            font-size: 12px;
+            color: #adb5bd;
+        }
+
+        .editor {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+        }
+
+        .editor-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            background-color: #ffffff;
+        }
+
+        .title-input {
+            width: 100%;
+            font-size: 24px;
+            font-weight: bold;
+            border: none;
+            outline: none;
+            padding: 10px 0;
+            color: #2c3e50;
+        }
+
+        .content-textarea {
+            flex: 1;
+            padding: 20px;
+            border: none;
+            outline: none;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            color: #2c3e50;
+        }
+
+        .editor-empty {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+        }
+
+        .empty-content {
+            text-align: center;
+            color: #6c757d;
+        }
+
+        .empty-content h2 {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #dc3545;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 3px;
+            float: right;
+        }
+
+        .btn-delete:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .stats {
+            padding: 10px 20px;
+            border-top: 1px solid #e9ecef;
+            background-color: #f8f9fa;
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>Q NoteX</h1>
+                <button class="btn-new" onclick="noteManager.createNote()">+ 新建笔记</button>
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    placeholder="搜索笔记..." 
+                    oninput="noteManager.searchNotes(this.value)"
+                >
+            </div>
+            
+            <div class="notes-list" id="notesList">
+                <div style="text-align: center; color: #6c757d; padding: 40px 20px;">
+                    还没有笔记，创建第一个吧！
+                </div>
+            </div>
+        </div>
+        
+        <div class="editor" id="editor">
+            <div class="editor-empty">
+                <div class="empty-content">
+                    <h2>📝</h2>
+                    <p>选择一个笔记开始编辑</p>
+                    <p>或者创建一个新笔记</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class NoteManager {
+            constructor() {
+                this.notes = this.loadNotes();
+                this.currentNote = null;
+                this.searchQuery = '';
+                this.init();
+            }
+
+            init() {
+                this.renderNotesList();
+                this.setupKeyboardShortcuts();
+                
+                if (this.notes.length > 0) {
+                    this.selectNote(this.notes[0]);
+                }
+            }
+
+            loadNotes() {
+                const notes = localStorage.getItem('qnotex_notes');
+                return notes ? JSON.parse(notes) : [];
+            }
+
+            saveNotes() {
+                localStorage.setItem('qnotex_notes', JSON.stringify(this.notes));
+            }
+
+            createNote() {
+                const newNote = {
+                    id: Date.now().toString(),
+                    title: '新笔记',
+                    content: '',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                this.notes.unshift(newNote);
+                this.saveNotes();
+                this.renderNotesList();
+                this.selectNote(newNote);
+            }
+
+            deleteNote(noteId) {
+                if (confirm('确定要删除这条笔记吗？')) {
+                    this.notes = this.notes.filter(note => note.id !== noteId);
+                    this.saveNotes();
+                    this.renderNotesList();
+                    
+                    if (this.currentNote && this.currentNote.id === noteId) {
+                        if (this.notes.length > 0) {
+                            this.selectNote(this.notes[0]);
+                        } else {
+                            this.showEmptyEditor();
+                        }
+                    }
+                }
+            }
+
+            selectNote(note) {
+                this.currentNote = note;
+                this.renderEditor();
+                this.renderNotesList();
+            }
+
+            updateCurrentNote() {
+                if (this.currentNote) {
+                    const titleInput = document.querySelector('.title-input');
+                    const contentTextarea = document.querySelector('.content-textarea');
+                    
+                    if (titleInput && contentTextarea) {
+                        this.currentNote.title = titleInput.value || '无标题';
+                        this.currentNote.content = contentTextarea.value;
+                        this.currentNote.updatedAt = new Date().toISOString();
+                        
+                        this.saveNotes();
+                        this.renderNotesList();
+                    }
+                }
+            }
+
+            searchNotes(query) {
+                this.searchQuery = query.toLowerCase();
+                this.renderNotesList();
+            }
+
+            getFilteredNotes() {
+                if (!this.searchQuery) {
+                    return this.notes;
+                }
+                
+                return this.notes.filter(note => 
+                    note.title.toLowerCase().includes(this.searchQuery) ||
+                    note.content.toLowerCase().includes(this.searchQuery)
+                );
+            }
+
+            renderNotesList() {
+                const notesList = document.getElementById('notesList');
+                const filteredNotes = this.getFilteredNotes();
+
+                if (filteredNotes.length === 0) {
+                    notesList.innerHTML = `
+                        <div style="text-align: center; color: #6c757d; padding: 40px 20px; font-style: italic;">
+                            ${this.searchQuery ? '没有找到匹配的笔记' : '还没有笔记，创建第一个吧！'}
+                        </div>
+                    `;
+                    return;
+                }
+
+                notesList.innerHTML = filteredNotes.map(note => `
+                    <div class="note-item ${this.currentNote && this.currentNote.id === note.id ? 'active' : ''}" 
+                         onclick="noteManager.selectNote(${JSON.stringify(note).replace(/"/g, '&quot;')})">
+                        <button class="btn-delete" onclick="event.stopPropagation(); noteManager.deleteNote('${note.id}')">×</button>
+                        <div class="note-title">${note.title || '无标题'}</div>
+                        <div class="note-preview">${(note.content || '').slice(0, 100)}...</div>
+                        <div class="note-date">${new Date(note.updatedAt).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            }
+
+            renderEditor() {
+                const editor = document.getElementById('editor');
+                
+                if (!this.currentNote) {
+                    this.showEmptyEditor();
+                    return;
+                }
+
+                editor.innerHTML = `
+                    <div class="editor-header">
+                        <input 
+                            type="text" 
+                            class="title-input" 
+                            placeholder="笔记标题..." 
+                            value="${this.currentNote.title}"
+                            oninput="noteManager.handleInput()"
+                        >
+                    </div>
+                    
+                    <textarea 
+                        class="content-textarea" 
+                        placeholder="开始输入你的笔记..."
+                        oninput="noteManager.handleInput()"
+                    >${this.currentNote.content}</textarea>
+                    
+                    <div class="stats">
+                        字符数: ${this.currentNote.content.length} | 
+                        创建时间: ${new Date(this.currentNote.createdAt).toLocaleString()} | 
+                        修改时间: ${new Date(this.currentNote.updatedAt).toLocaleString()}
+                    </div>
+                `;
+            }
+
+            showEmptyEditor() {
+                const editor = document.getElementById('editor');
+                editor.innerHTML = `
+                    <div class="editor-empty">
+                        <div class="empty-content">
+                            <h2>📝</h2>
+                            <p>选择一个笔记开始编辑</p>
+                            <p>或者创建一个新笔记</p>
+                        </div>
+                    </div>
+                `;
+                this.currentNote = null;
+            }
+
+            handleInput() {
+                clearTimeout(this.autoSaveTimer);
+                this.autoSaveTimer = setTimeout(() => {
+                    this.updateCurrentNote();
+                }, 1000); // 1秒后自动保存
+            }
+
+            setupKeyboardShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    if ((e.ctrlKey || e.metaKey)) {
+                        switch (e.key) {
+                            case 's':
+                                e.preventDefault();
+                                this.updateCurrentNote();
+                                break;
+                            case 'n':
+                                e.preventDefault();
+                                this.createNote();
+                                break;
+                        }
+                    }
+                });
+            }
+        }
+
+        // 初始化应用
+        const noteManager = new NoteManager();
+    </script>
+</body>
+</html>
