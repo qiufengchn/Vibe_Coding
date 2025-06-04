@@ -1,6 +1,5 @@
 # Vibe_Coding
 
-![Uploading vibe coding.png…]()
 
 
 This repository explores Vibe Coding, a revolutionary programming paradigm that seamlessly integrates AI—particularly large language models (LLMs)—into the development workflow. Below is a comprehensive overview:
